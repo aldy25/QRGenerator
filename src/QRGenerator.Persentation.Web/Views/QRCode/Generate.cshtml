@@ -1,0 +1,81 @@
+﻿@section breadCrumbs {
+    <span>Generate QRCode</span>
+}
+@section page {
+    <span>Generate QRCode</span>
+}
+@model GenerateViewModel
+<div class="card m-b-30">
+    <div class="card-body">
+        <div class="button-items mt-2 mb-4">
+
+            <form asp-action="Generate" method="post" id="formLogin" class="row g-3 needs-validation">
+                <div style="display:none" id="messageError" class="alert alert-danger alert-dismissible fade show" role="alert">
+                </div>
+                @if (ViewBag.ErrorMessage != null)
+                {
+                    <div class="alert alert-danger">
+                        @ViewBag.ErrorMessage
+                    </div>
+                }
+                <div class="col-2 justify-content-end">
+                    <label asp-for="Text" class="form-label">Input Your Text</label>
+                    </div>
+                
+                <div class="col-4">
+                    <div class="input-group has-validation">
+                        <input asp-for="Text" class="form-control" id="isi" required>
+                        <span asp-validation-for="Text" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <button class="btn btn-primary w-100" id="btnSubmit" type="submit">Submit</button>
+                </div>
+              </form>
+
+             @if (!string.IsNullOrEmpty(Model.QRCodeImageBase64))
+            {
+                <hr />
+                <h3>QR Code:</h3>
+                <img src="~/@Model.QRCodeImageBase64" />
+                <div>
+                    <a class="btn btn-success" href="@Url.Action("DownloadPdf", "QRCode", new {imagePath = Model.QRCodeImageBase64})">Download PDF with Image</a>
+                </div>
+               
+            }
+    
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var isLoggedIn = @Html.Raw(Json.Serialize(ViewData["ShowNotification"]));
+        if (isLoggedIn) {
+
+            let timerInterval;
+            Swal.fire({
+                title: "<h5 style='color:red'>you may not access the login page, because you are already logged in!</h5>",
+                html: "I will close in <b></b> milliseconds.",
+                timer: 2000,
+                timerProgressBar: true,
+                didOpen: () => {
+                    Swal.showLoading();
+                    const timer = Swal.getPopup().querySelector("b");
+                    timerInterval = setInterval(() => {
+                        timer.textContent = `${Swal.getTimerLeft()}`;
+                    }, 100);
+                },
+                willClose: () => {
+                    clearInterval(timerInterval);
+                }
+            }).then((result) => {
+                /* Read more about handling dismissals below */
+                if (result.dismiss === Swal.DismissReason.timer) {
+                    console.log("I was closed by the timer");
+                }
+            });
+        }
+
+    }());
+</script>

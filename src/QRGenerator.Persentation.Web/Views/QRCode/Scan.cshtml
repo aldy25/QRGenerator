@@ -1,0 +1,221 @@
+﻿@section breadCrumbs {
+    <span>Scan QRCode</span>
+}
+@section page {
+    <span>Scan QRCode</span>
+}
+
+@model ReaderViewModel
+<div class="card m-b-30">
+    <div class="card-body">
+        <div class="button-items mt-2 mb-4">
+
+            <div class="container-content" id="camera">
+                <div id="qr-reader" style="width:500px"></div>
+                <div id="qr-reader-results"></div>
+            </div>
+            <div id="responseData" style="display:none">
+
+                <div class="mb-3">
+                    <label for="dataQrcode" class="form-label">Data QR Code</label>
+                    <input type="text" class="form-control" id="dataQrcode" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="reverseDataQrcode" class="form-label">Reverse Data QR Code</label>
+                    <input type="text" class="form-control" id="reverseDataQrcode" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="usernameCreated" class="form-label">Username Created</label>
+                    <input type="text" class="form-control" id="usernameCreated" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="usernameScan" class="form-label">Username Scan</label>
+                    <input type="text" class="form-control" id="usernameScan" disabled>
+                </div>
+
+                <div style="display:none" class="mb-3">
+                    <label for="scanCreated" class="form-label">Scan Created</label>
+                    <input type="text" class="form-control" id="scanCreated" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="created" class="form-label">Created</label>
+                    <input type="datetime-local" class="form-control" id="created" disabled>
+                </div>
+
+                <div class="mb-3">
+                    <label for="remark" class="form-label">Remark</label>
+                    <input type="text" class="form-control" id="remark">
+                </div>
+                <button type="submit" class="btn btn-primary" id="saveButton" onclick="saveData()">Save</button>
+                <button type="button" class="btn btn-danger" id="cancelButton">Cancel</button>
+
+
+            </div>
+
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script>
+    function saveData() {
+        event.preventDefault();
+        const data = {
+            DataQrcode: document.getElementById("dataQrcode").value,
+            ReverseDataQRcode: document.getElementById("reverseDataQrcode").value,
+            UsernameCreated: document.getElementById("usernameCreated").value,
+            UsernameScan: document.getElementById("usernameScan").value,
+            ScanCreated: document.getElementById("scanCreated").value,
+            Created: document.getElementById("created").value,
+            Remark: document.getElementById("remark").value
+        };
+        let url = '/QrCode/SaveScan';
+        let request = new XMLHttpRequest();
+        request.open('POST', url);
+        request.setRequestHeader("Content-Type", "application/json");
+        request.send(JSON.stringify(data));
+        request.onload = () => {
+            let result = JSON.parse(request.response);
+            console.log(result);
+            if (result.status === 1) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Succes',
+                    text: result.message
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = "/QRCode/Scan";
+                    }
+                });
+            }
+            else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Failed",
+                    text: result.message,
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+
+        }
+    }
+
+    function docReady(fn) {
+        if (document.readyState === "complete"
+            || document.readyState === "interactive") {
+            setTimeout(fn, 1);
+        } else {
+            document.addEventListener("DOMContentLoaded", fn);
+        }
+    }
+
+    docReady(function () {
+
+        document.getElementById("cancelButton").addEventListener('click', function () {
+            window.location.reload();
+        })
+        var resultContainer = document.getElementById('qr-reader-results');
+        var lastResult = '';
+        var countResults = 0;
+        var debounceTimeout;
+
+        var html5QrcodeScanner = new Html5QrcodeScanner(
+            "qr-reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+
+
+
+        function onScanSuccess(decodedText, decodedResult) {
+
+            if (decodedText !== lastResult) {
+                lastResult = decodedText;
+                ++countResults;
+                if (debounceTimeout) clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => {
+                    getData(decodedText)
+                    resultContainer.innerHTML = `<p>Result #${countResults}: ${decodedText}</p>`;
+                }, 500);
+            }
+        }
+
+        function getData(qrdata) {
+
+            data = {
+                QrCodeData: qrdata
+            }
+
+            let url = 'http://localhost:5079/api/QrProcess';
+            let request = new XMLHttpRequest();
+            request.open('POST', url);
+            request.setRequestHeader("Content-Type", "application/json");
+            request.send(JSON.stringify(data));
+            request.onload = () => {
+                let result = JSON.parse(request.response);
+                console.log(request.response);
+                if (result) {
+                    html5QrcodeScanner.clear();
+                    const element = document.getElementById("responseData").style.display = "block";
+                    document.getElementById('dataQrcode').value = result.dataQrcode;
+                    document.getElementById('reverseDataQrcode').value = result.reverseDataQRcode;
+                    document.getElementById('usernameCreated').value = result.usernameCreated;
+                    document.getElementById('usernameScan').value = result.usernameScan;
+                    document.getElementById('scanCreated').value = result.scanCreated;
+                    document.getElementById('created').value = result.created;
+                    document.getElementById('remark').value = result.remark;
+                }
+            }
+
+        }
+        // function formatDateToCustomFormat(dateString) {
+        //     const date = new Date(dateString);
+
+        //     const year = date.getFullYear();
+        //     const month = String(date.getMonth() + 1).padStart(2, '0'); // Bulan dimulai dari 0
+        //     const day = String(date.getDate()).padStart(2, '0');
+        //     const hours = String(date.getHours()).padStart(2, '0');
+        //     const minutes = String(date.getMinutes()).padStart(2, '0');
+        //     const seconds = String(date.getSeconds()).padStart(2, '0');
+        //     const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+
+        //     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+        // }
+
+    });
+
+    (function () {
+        var isLoggedIn = @Html.Raw(Json.Serialize(ViewData["ShowNotification"]));
+        if (isLoggedIn) {
+
+            let timerInterval;
+            Swal.fire({
+                title: "<h5 style='color:red'>you may not access the login page, because you are already logged in!</h5>",
+                html: "I will close in <b></b> milliseconds.",
+                timer: 2000,
+                timerProgressBar: true,
+                didOpen: () => {
+                    Swal.showLoading();
+                    const timer = Swal.getPopup().querySelector("b");
+                    timerInterval = setInterval(() => {
+                        timer.textContent = `${Swal.getTimerLeft()}`;
+                    }, 100);
+                },
+                willClose: () => {
+                    clearInterval(timerInterval);
+                }
+            }).then((result) => {
+                /* Read more about handling dismissals below */
+                if (result.dismiss === Swal.DismissReason.timer) {
+                    console.log("I was closed by the timer");
+                }
+            });
+        }
+
+    }());
+
+
+</script>
